@@ -2,6 +2,7 @@ import 'dotenv/config'
 import bcrypt from 'bcryptjs'
 import cors from 'cors'
 import express from 'express'
+import fs from 'node:fs'
 import jwt from 'jsonwebtoken'
 import mysql from 'mysql2/promise'
 import path from 'node:path'
@@ -13,17 +14,59 @@ const jwtSecret = process.env.JWT_SECRET || 'dev-secret-ganti-di-env'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.resolve(__dirname, '..', 'dist')
 
-// Pool MySQL/MariaDB ini cocok untuk Laragon default.
+function getDatabaseConfig() {
+  const url = process.env.MYSQL_URL || process.env.DATABASE_URL
+  if (url) {
+    const parsed = new URL(url)
+    return {
+      host: parsed.hostname,
+      port: Number(parsed.port || 3306),
+      user: decodeURIComponent(parsed.username),
+      password: decodeURIComponent(parsed.password),
+      database: parsed.pathname.replace('/', ''),
+    }
+  }
+  return {
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT || 3306),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'skripsi_masak',
+  }
+}
+
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'skripsi_masak',
+  ...getDatabaseConfig(),
   waitForConnections: true,
   connectionLimit: 10,
   namedPlaceholders: false,
+  multipleStatements: true,
 })
+
+async function initDatabase() {
+  const sqlPath = path.resolve(__dirname, '..', 'database', 'laragon.sql')
+  if (!fs.existsSync(sqlPath)) return
+
+  const sql = fs.readFileSync(sqlPath, 'utf-8')
+  const statements = sql
+    .replace(/CREATE DATABASE[^;]+;/gi, '')
+    .replace(/USE\s+\w+;/gi, '')
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.startsWith('--'))
+
+  for (const stmt of statements) {
+    try {
+      await pool.query(stmt)
+    } catch (err) {
+      if (err.code === 'ER_TABLE_EXISTS_ERROR' || err.code === 'ER_DUP_ENTRY') continue
+      console.warn('Init warning:', err.message)
+    }
+  }
+  console.log('Database tables ready')
+}
+
+await initDatabase()
 
 app.use(cors())
 app.use(express.json())
