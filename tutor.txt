@@ -1,0 +1,23 @@
+Proyek sekarang memakai database MySQL/MariaDB dari Laragon.
+
+Perubahan utama:
+
+- Backend Express di server/index.js memakai mysql2.
+- Konfigurasi database memakai DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, dan DB_NAME.
+- File import Laragon tersedia di database/laragon.sql.
+- Konfigurasi database lama sudah dihapus.
+- Frontend tetap memanggil API lewat src/api.js.
+
+Cara jalan:
+
+1. Start Laragon dan aktifkan MySQL.
+2. Import database/laragon.sql lewat phpMyAdmin atau HeidiSQL.
+3. Jalankan API:
+   npm run dev:api
+4. Jalankan React:
+   npm run dev
+
+Login admin awal:
+
+admin@example.com
+admin123
