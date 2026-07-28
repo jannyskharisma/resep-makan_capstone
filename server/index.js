@@ -60,13 +60,17 @@ async function initDatabase() {
       await pool.query(stmt)
     } catch (err) {
       if (err.code === 'ER_TABLE_EXISTS_ERROR' || err.code === 'ER_DUP_ENTRY') continue
+      if (err.code === 'ECONNREFUSED' || err.code === 'ER_ACCESS_DENIED_ERROR') {
+        console.warn('Database not available yet, skipping init')
+        return
+      }
       console.warn('Init warning:', err.message)
     }
   }
   console.log('Database tables ready')
 }
 
-await initDatabase()
+initDatabase().catch(err => console.warn('Init DB skipped:', err.message))
 
 app.use(cors())
 app.use(express.json())
@@ -148,8 +152,12 @@ function wajibAdmin(req, res, next) {
 }
 
 app.get('/api/health', async (_req, res) => {
-  const [rows] = await pool.query('SELECT NOW() AS waktu_database')
-  res.json({ ok: true, database: rows[0].waktu_database })
+  try {
+    const [rows] = await pool.query('SELECT NOW() AS waktu_database')
+    res.json({ ok: true, database: rows[0].waktu_database })
+  } catch {
+    res.json({ ok: true, database: 'connecting...' })
+  }
 })
 
 app.get('/api/auth/session', wajibLogin, async (req, res) => {
