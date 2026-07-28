@@ -4,13 +4,13 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/resep-makan_capstone/',
   plugins: [
     react(),
-    tailwindcss(), //mendaftarkan kompiler tailwind v4 resmi
+    tailwindcss(),
   ],
   server: {
     proxy: {
-      // Proxy ini membuat React bisa memanggil /api tanpa hardcode port backend.
       '/api': 'http://localhost:3001',
     },
   },
